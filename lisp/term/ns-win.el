@@ -166,6 +166,8 @@ The properties returned may include `top', `left', `height', and `width'."
 (define-key global-map [ns-open-file] 'ns-find-file)
 (define-key global-map [ns-open-temp-file] [ns-open-file])
 (define-key global-map [ns-change-font] 'ns-respond-to-change-font)
+(define-key global-map [ns-check-spelling] 'ns-respond-to-find-next-misspelling)
+(define-key global-map [ns-spelling-change] 'ns-respond-to-change-spelling)
 (define-key global-map [ns-open-file-line] 'ns-open-file-select-line)
 (define-key global-map [ns-spi-service-call] 'ns-spi-service-call)
 (define-key global-map [ns-new-frame] 'make-frame)
@@ -670,6 +672,31 @@ come with macOS.
 See the documentation of `create-fontset-from-fontset-spec' for the format.")
 
 (defvar ns-reg-to-script)               ; nsfont.m
+
+(autoload 'ns-toggle-spellchecker-panel "flyspell"
+  "Show NSSpellChecker spellingPanel, and call
+ns-highlight-misspelling-and-suggest.  If panel
+is already visible, close it." t)
+
+(autoload 'ns-highlight-misspelling-and-suggest "flyspell"
+  "Search forward in current buffer for first misspelling, looping if end
+is reached.  If found, set region to the misspelling, apply face
+flyspell-incorrect, and show word in OS X spelling panel" nil)
+
+(defun ns-respond-to-change-spelling (start end)
+  "Respond to changeSpelling: event, expecting ns-spelling-text
+to substitute for selected buffer text."
+  (interactive "r")
+  (if mark-active
+      (delete-region start end))
+  (insert ns-spelling-text))
+
+(defun ns-respond-to-find-next-misspelling ()
+  "Respond to checkSpelling: event.  Also called by Spellchecker
+panel immediately after correcting a word in a buffer."
+  (interactive)
+  (ns-highlight-misspelling-and-suggest)
+  )
 
 ;; This maps font registries (not exposed by NS APIs for font selection) to
 ;; Unicode scripts (which can be mapped to Unicode character ranges which are).

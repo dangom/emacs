@@ -73,6 +73,8 @@
 	       (cons (logior (lsh 0 16)  12) 'ns-new-frame)
 	       (cons (logior (lsh 0 16)  13) 'ns-toggle-toolbar)
 	       (cons (logior (lsh 0 16)  14) 'ns-show-prefs)
+               (cons (logior (lsh 0 16)  20) 'ns-check-spelling)
+               (cons (logior (lsh 0 16)  21) 'ns-spelling-change)
 	       ))))
     (set-terminal-parameter frame 'x-setup-function-keys t)))
 
