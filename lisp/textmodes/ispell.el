@@ -4054,6 +4054,8 @@ Returns the sum SHIFT due to changes in word replacements."
     (if (not (numberp shift))
 	(setq shift 0))
     ;; send string to spell process and get input.
+    (if (string= ispell-program-name "NSSpellChecker")
+        (setq ispell-filter (nreverse (ispell-ns-spellcheck-string string)))
     (ispell-send-string string)
     (while (progn
 	     (ispell-accept-output)
@@ -4061,11 +4063,17 @@ Returns the sum SHIFT due to changes in word replacements."
 	     (not (string= "" (car ispell-filter)))))
     ;; parse all inputs from the stream one word at a time.
     ;; Place in FIFO order and remove the blank item.
-    (setq ispell-filter (nreverse (cdr ispell-filter)))
+    (setq ispell-filter (nreverse (cdr ispell-filter))))
     (while (and (not ispell-quit) ispell-filter)
       ;; get next word, accounting for accepted words and start shifts
-      (setq poss (ispell-parse-output (car ispell-filter)
-				      accept-list shift))
+            (setq poss (if (string= ispell-program-name "NSSpellChecker")
+                           ;; add shift to offset from ispell-ns-spellcheck-string
+                           (progn
+                             (setcar (cdr (car ispell-filter))
+                                     (+ shift (cadr (car ispell-filter))))
+                             (car ispell-filter))
+                         (ispell-parse-output (car ispell-filter)
+                                              accept-list shift)))
       (if (and poss (listp poss))	; spelling error occurred.
 	  ;; Whenever we have misspellings, we can change
 	  ;; the buffer.  Keep boundaries as markers.
@@ -4678,6 +4686,9 @@ You can bind this to the key C-c i in GNUS or mail by adding to
 
 (defun ispell-accept-buffer-local-defs ()
   "Load all buffer-local information, restarting Ispell when necessary."
+  (if (string= ispell-program-name "NSSpellChecker")
+      (setq ispell-current-dictionary
+            (or ispell-local-dictionary ispell-dictionary-internal)))
   (ispell-buffer-local-dict)		; May kill ispell-process.
   (ispell-buffer-local-words)		; Will initialize ispell-process.
   (ispell-buffer-local-parsing))
@@ -4688,7 +4699,8 @@ You can bind this to the key C-c i in GNUS or mail by adding to
 Overrides the default parsing mode.
 Includes LaTeX/Nroff modes and extended character mode."
   ;; (ispell-init-process) must already be called.
-  (ispell-send-string "!\n")		; Put process in terse mode.
+  (if (not (string= ispell-program-name "NSSpellChecker"))
+      (ispell-send-string "!\n"))		; Put process in terse mode.
   ;; We assume all major modes with "tex-mode" in them should use latex parsing
   ;; When exclusively checking comments, set to raw text mode (nroff).
   (if (and (not (eq 'exclusive ispell-check-comments))
@@ -4697,16 +4709,19 @@ Includes LaTeX/Nroff modes and extended character mode."
 				  (symbol-name major-mode)))
 	       (eq ispell-parser 'tex)))
       (progn
-	(ispell-send-string "+\n")	; set ispell mode to tex
+        (if (not (string= ispell-program-name "NSSpellChecker"))
+            (ispell-send-string "+\n"))	; set ispell mode to tex
 	(if (not (eq ispell-parser 'tex))
 	    (set (make-local-variable 'ispell-parser) 'tex)))
-    (ispell-send-string "-\n"))		; set mode to normal (nroff)
+    (if (not (string= ispell-program-name "NSSpellChecker"))
+        (ispell-send-string "-\n")))		; set mode to normal (nroff)
   ;; If needed, test for SGML & HTML modes and set a buffer local nil/t value.
   (if (and ispell-skip-html (not (eq ispell-skip-html t)))
       (setq ispell-skip-html
 	    (not (null (string-match "sgml\\|html\\|xml"
 				     (downcase (symbol-name major-mode)))))))
   ;; Set default extended character mode for given buffer, if any.
+  (when (not (string= ispell-program-name "NSSpellChecker"))
   (let ((extended-char-mode (ispell-get-extended-character-mode)))
     (if extended-char-mode
 	(ispell-send-string (concat extended-char-mode "\n"))))
@@ -4729,7 +4744,7 @@ Includes LaTeX/Nroff modes and extended character mode."
 		  ((string-match "~" string) ; Set extended character mode.
 		   (ispell-send-string (concat string "\n")))
 		  (t (message "Invalid Ispell Parsing argument!")
-		     (sit-for 2))))))))
+		     (sit-for 2)))))))))
 
 
 ;; Can kill the current ispell process
@@ -4777,12 +4792,13 @@ Both should not be used to define a buffer-local dictionary."
       (ispell-kill-ispell t))
   ;; Actually start a new ispell process, because we need
   ;; to send commands now to specify the local words to it.
+  (if (not (string= ispell-program-name "NSSpellChecker"))
   (ispell-init-process)
   (dolist (session-localword ispell-buffer-session-localwords)
     (ispell-send-string (concat "@" session-localword "\n")))
   (or ispell-buffer-local-name
       (if ispell-buffer-session-localwords
-	  (setq ispell-buffer-local-name (buffer-name))))
+	  (setq ispell-buffer-local-name (buffer-name)))))
   (save-excursion
     (goto-char (point-min))
     (while (search-forward ispell-words-keyword nil t)
@@ -4799,7 +4815,13 @@ Both should not be used to define a buffer-local dictionary."
 	  ;; Error handling needs to be added between ispell and Emacs.
 	  (if (and (< 1 (length string))
 		   (equal 0 (string-match ispell-casechars string)))
-	      (ispell-send-string (concat "@" string "\n"))))))))
+	      	      (if (string= ispell-program-name "NSSpellChecker")
+                          (progn
+                            ;; dummy spellcheck to ensure that NSSpellChecker
+                            ;;   is initialized
+                            (ns-spellchecker-check-spelling "test")
+                            (ns-spellchecker-ignore-word string (current-buffer)))
+                        (ispell-send-string (concat "@" string "\n")))))))))
 
 
 ;; Returns optionally adjusted region-end-point.
