@@ -1076,6 +1076,364 @@ get_geometry_from_preferences (struct ns_display_info *dpyinfo,
 
    ========================================================================== */
 
+/* Spelling */
+
+DEFUN ("ns-popup-spellchecker-panel", Fns_popup_spellchecker_panel, Sns_popup_spellchecker_panel,
+       0, 0, "",
+       doc: /* Pop up the spell checking panel.
+Shows the NS spell checking panel and brings it to the front.*/)
+     (void)
+{
+  id sc;
+
+  check_window_system (NULL);
+  sc = [NSSpellChecker sharedSpellChecker];
+
+  block_input();
+  [[sc spellingPanel] orderFront: NSApp];
+
+  // Spelling panel should appear with previous content, not empty.
+  //  [sc updateSpellingPanelWithMisspelledWord:@""]; // no word, no spelling errors
+
+  // found here: http://trac.webkit.org/changeset/19670
+ // // FIXME 4811447: workaround for lack of API
+  //  	NSSpellChecker *spellChecker = [NSSpellChecker sharedSpellChecker];
+  // does not work
+  // if ([sc respondsToSelector:@selector(_updateGrammar)])
+  //   [sc performSelector:@selector(_updateGrammar)];
+  unblock_input();
+  return Qnil;
+}
+
+DEFUN ("ns-close-spellchecker-panel", Fns_close_spellchecker_panel, Sns_close_spellchecker_panel,
+       0, 0, "",
+       doc: /* Close the spell checking panel.*/)
+     (void)
+{
+  id sc;
+
+  check_window_system (NULL);
+  sc = [NSSpellChecker sharedSpellChecker];
+
+  block_input();
+  [[sc spellingPanel] close];
+
+  unblock_input();
+  return Qnil;
+}
+
+DEFUN ("ns-spellchecker-panel-visible-p", Fns_spellchecker_panel_visible_p, Sns_spellchecker_panel_visible_p,
+       0, 0, "",
+       doc: /* Return t if spellchecking panel is visible,
+nil otherwise.*/)
+     (void)
+{
+  id sc;
+  BOOL visible;
+
+  check_window_system (NULL);
+  sc = [NSSpellChecker sharedSpellChecker];
+
+  block_input();
+  visible = [[sc spellingPanel] isVisible];
+
+  unblock_input();
+  return visible ? Qt : Qnil;
+}
+
+
+DEFUN ("ns-spellchecker-show-word", Fns_spellchecker_show_word, Sns_spellchecker_show_word,
+       1, 1, 0,
+       doc: /* Show word WORD in the spellchecking panel.
+Give empty string to delete word.*/)
+     (str)
+     Lisp_Object str;
+{
+  id sc;
+
+  CHECK_STRING (str);
+  check_window_system (NULL);
+  block_input();
+  sc = [NSSpellChecker sharedSpellChecker];
+
+  [sc updateSpellingPanelWithMisspelledWord:[NSString stringWithUTF8String: SDATA (str)]]; // no word, no spelling errors
+
+  unblock_input();
+  return Qnil;
+}
+
+
+DEFUN ("ns-spellchecker-learn-word", Fns_spellchecker_learn_word, Sns_spellchecker_learn_word,
+       1, 1, 0,
+       doc: /* Learn word WORD.
+Returns learned word if successful.
+Not available on 10.4.*/)
+     (str)
+     Lisp_Object str;
+{
+  CHECK_STRING (str);
+  check_window_system (NULL);
+  block_input();
+  id sc = [NSSpellChecker sharedSpellChecker];
+
+#ifdef NS_IMPL_COCOA
+  if ([sc respondsToSelector:@selector(learnWord:)]) // (NSAppKitVersionNumber >= 824.0)
+    {
+
+      [sc learnWord:[NSString stringWithUTF8String: SDATA (str)]];
+      unblock_input();
+      return str;
+    }
+#endif
+  unblock_input();
+  return Qnil;
+}
+
+
+DEFUN ("ns-spellchecker-ignore-word", Fns_spellchecker_ignore_word, Sns_spellchecker_ignore_word,
+       1, 2, 0,
+       doc: /* Ignore word WORD in buffer BUFFER.*/)
+     (str, buffer)
+     Lisp_Object str, buffer;
+{
+  id sc;
+
+  CHECK_STRING (str);
+  check_window_system (NULL);
+  block_input();
+  sc = [NSSpellChecker sharedSpellChecker];
+
+  NSInteger tag = 1;
+  if (! NILP (buffer))
+    {
+      tag = sxhash (buffer, 0);
+    }
+
+  [sc ignoreWord:[NSString stringWithUTF8String: SDATA (str)] inSpellDocumentWithTag:tag];
+  unblock_input();
+  return Qnil;
+}
+
+
+DEFUN ("ns-spellchecker-ignored-words", Fns_spellchecker_ignored_words, Sns_spellchecker_ignored_words,
+       1, 1, 0,
+       doc: /* Return list of words ignored by NSSpellChecker
+for buffer BUFFER */)
+     (buffer)
+     Lisp_Object buffer;
+{
+  id sc;
+
+  check_window_system (NULL);
+  block_input();
+  sc = [NSSpellChecker sharedSpellChecker];
+
+  NSInteger tag = 1;
+  if (! NILP (buffer))
+    {
+      tag = sxhash (buffer, 0);
+    }
+
+  Lisp_Object retval = Qnil;
+  NSArray *words = [sc ignoredWordsInSpellDocumentWithTag:tag];
+  int arrayCount = [words count];
+  int i;
+  for (i = 0; i < arrayCount; i++) {
+    // build Lisp list of strings
+    retval = Fcons (build_string ([[words objectAtIndex:i] UTF8String]),
+		    retval);
+  }
+  unblock_input();
+  return retval;
+}
+
+
+DEFUN ("ns-spellchecker-check-spelling", Fns_spellchecker_check_spelling, Sns_spellchecker_check_spelling,
+       1, 2, 0,
+       doc: /* Check spelling of STRING
+Returns the location of the first misspelled word in a
+cons cell of form (beginning . length), or nil if all
+words are spelled as in the dictionary.*/)
+     (string, buffer)
+     Lisp_Object string, buffer;
+{
+  id sc;
+
+  CHECK_STRING (string);
+  check_window_system (NULL);
+  block_input();
+  sc = [NSSpellChecker sharedSpellChecker];
+
+  /*  NSRange first_word = nil;   // Invalid initializer!  NSRange is a struct */
+  NSInteger tag = 1;
+  if (! NILP (buffer) )
+    {
+      tag = sxhash (buffer, 0);
+    }
+
+  /* unfinished -
+  if ([sc respondsToSelector:@selector(checkString:range:types:options:inSpellDocumentWithTag:orthography:wordCount:)])
+    {
+      NSString *nsString = [NSString stringWithUTF8String: SDATA (string)];
+      NSArray *spelling_result = [sc
+				   checkString:nsString
+					 range:NSMakeRange(0,[nsString size]-1)
+					 types:NSTextCheckingAllSystemTypes - NSTextCheckingTypeGrammar
+				       options:nil
+				     inSpellDocumentWithTag:tag
+				   orthography:nil // difficult to produce
+				     wordCount:nil];
+
+    } else */
+    // {
+
+      NSRange first_word =  [sc checkSpellingOfString:[NSString stringWithUTF8String: SDATA (string)] startingAt:((NSInteger) 0)
+					     language:nil wrap:NO inSpellDocumentWithTag:tag wordCount:nil];
+
+    // }
+  unblock_input();
+  if (first_word.location == NSNotFound || (int) first_word.location < 0)
+    return Qnil;
+  else
+    return Fcons (make_number (first_word.location), make_number (first_word.length));
+}
+
+
+DEFUN ("ns-spellchecker-check-grammar", Fns_spellchecker_check_grammar, Sns_spellchecker_check_grammar,
+       1, 2, 0,
+       doc: /* Check spelling of SENTENCE.
+BUFFER, if given, idenitifies the document containing list
+of ignored grammatical constructions. */)
+     (sentence, buffer)
+     Lisp_Object sentence, buffer;
+{
+  id sc;
+
+  CHECK_STRING (sentence);
+  check_window_system (NULL);
+  block_input();
+  sc = [NSSpellChecker sharedSpellChecker];
+
+  NSInteger tag = 1;
+  if (! NILP (buffer) )
+    {
+      tag = sxhash (buffer, 0);
+    }
+
+  NSArray *errdetails;
+
+  /* to do: use long version */
+  NSRange first_word = [sc checkGrammarOfString: [NSString stringWithUTF8String: SDATA (sentence)] startingAt:((NSInteger) 0)
+				       language:nil wrap:NO inSpellDocumentWithTag:tag details:&errdetails];
+
+  unblock_input();
+  if (first_word.length == 0) // Is this how "no location" is indicated?
+    return Qnil;
+  else
+    return Fcons (make_number ((int) first_word.location), make_number ((int) first_word.length));
+}
+
+
+DEFUN ("ns-spellchecker-get-suggestions", Fns_spellchecker_get_suggestions, Sns_spellchecker_get_suggestions,
+       1, 1, 0,
+       doc: /* Get suggestions for WORD.
+If word contains all capital letters, or its first
+letter is capitalized, the suggested words are
+capitalized in the same way. */)
+     (word)
+     Lisp_Object word;
+{
+  id sc;
+
+  CHECK_STRING (word);
+  check_window_system (NULL);
+  block_input();
+  sc = [NSSpellChecker sharedSpellChecker];
+
+  Lisp_Object retval = Qnil;
+  NSArray *guesses = [sc guessesForWord: [NSString stringWithUTF8String: SDATA (word)]];
+  int arrayCount = [guesses count];
+  int i = arrayCount;
+  while (--i >= 0)
+    retval = Fcons (build_string ([[guesses objectAtIndex:i] UTF8String]),
+		    retval);
+  unblock_input();
+  return retval;
+}
+
+
+DEFUN ("ns-spellchecker-list-languages", Fns_spellchecker_list_languages, Sns_spellchecker_list_languages,
+       0, 0, 0,
+       doc: /* Get all available spell-checking languages.
+Returns nil if not successful.*/)
+     (void)
+{
+  id sc;
+  Lisp_Object retval = Qnil;
+
+  check_window_system (NULL);
+  block_input();
+  sc = [NSSpellChecker sharedSpellChecker];
+
+#ifdef NS_IMPL_COCOA
+  if ([sc respondsToSelector:@selector(availableLanguages)]) // (NSAppKitVersionNumber >= 824.0)
+    {
+      NSArray *langs = [sc availableLanguages];
+      int arrayCount = [langs count];
+      int i;
+      for (i = 0; i < arrayCount; i++) {
+	// build Lisp list of strings
+	retval = Fcons (build_string ([[langs objectAtIndex:i] UTF8String]),
+			retval);
+      }
+    }
+#endif
+  unblock_input();
+  return retval;
+}
+
+
+DEFUN ("ns-spellchecker-current-language", Fns_spellchecker_current_language, Sns_spellchecker_current_language,
+       0, 0, 0,
+       doc: /* Get the current spell-checking language.*/)
+     (void)
+{
+  id sc;
+
+  check_window_system (NULL);
+  block_input();
+  sc = [NSSpellChecker sharedSpellChecker];
+
+  Lisp_Object retval = Qnil;
+  NSString *lang = [sc language];
+  retval = build_string ([lang UTF8String]);
+
+  unblock_input();
+  return retval;
+}
+
+
+DEFUN ("ns-spellchecker-set-language", Fns_spellchecker_set_language, Sns_spellchecker_set_language,
+       1, 1, 0,
+       doc: /* Set spell-checking language.
+LANGUAGE must be one of the languages returned by
+`ns-spellchecker-list-langauges'.*/)
+     (language)
+     Lisp_Object language;
+{
+  id sc;
+
+  CHECK_STRING (language);
+  check_window_system (NULL);
+  block_input();
+  sc = [NSSpellChecker sharedSpellChecker];
+
+  [sc setLanguage: [NSString stringWithUTF8String: SDATA (language)]];
+  unblock_input();
+  return Qnil;
+}
+
+
 DEFUN ("x-create-frame", Fx_create_frame, Sx_create_frame,
        1, 1, 0,
        doc: /* Make a new Nextstep window, called a "frame" in Emacs terms.
@@ -3287,6 +3645,20 @@ be used as the image of the icon representing the frame.  */);
   DEFVAR_LISP ("ns-version-string", Vns_version_string,
                doc: /* Toolkit version for NS Windowing.  */);
   Vns_version_string = ns_appkit_version_str ();
+
+   defsubr (&Sns_popup_spellchecker_panel);
+   defsubr (&Sns_close_spellchecker_panel);
+   defsubr (&Sns_spellchecker_panel_visible_p);
+   defsubr (&Sns_spellchecker_learn_word);
+   defsubr (&Sns_spellchecker_ignore_word);
+   defsubr (&Sns_spellchecker_ignored_words);
+   defsubr (&Sns_spellchecker_show_word);
+   defsubr (&Sns_spellchecker_check_spelling);
+   defsubr (&Sns_spellchecker_check_grammar);
+   defsubr (&Sns_spellchecker_get_suggestions);
+   defsubr (&Sns_spellchecker_list_languages);
+   defsubr (&Sns_spellchecker_current_language);
+   defsubr (&Sns_spellchecker_set_language);
 
   defsubr (&Sns_read_file_name);
   defsubr (&Sns_get_resource);

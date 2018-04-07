@@ -6015,6 +6015,53 @@ not_in_argv (NSString *arg)
     }
 }
 
+/* called on spelling text change (part of NSChangeSpelling protocol) */
+- (void)changeSpelling: (id)sender
+{
+  NSEvent *e =[[self window] currentEvent];
+
+  NSTRACE (changeSpelling);
+  if (!emacs_event)
+    return;
+
+  /* SET_FRAME_GARBAGED (emacsframe); needed? */
+
+  emacs_event->kind = NS_NONKEY_EVENT;
+  emacs_event->modifiers = 0;
+  emacs_event->code = KEY_NS_SPELLING_CHANGE;
+  ns_spelling_text = build_string ([[[(NSControl*)sender selectedCell] stringValue] UTF8String]);
+  EV_TRAILER (e);
+}
+
+- (void)ignoreSpelling:(id)sender {
+  NSInteger tag = sxhash (Fcurrent_buffer (), 0);
+
+  [[NSSpellChecker sharedSpellChecker] ignoreWord:[[sender selectedCell] stringValue]
+			   inSpellDocumentWithTag: tag];
+
+  /* Note (To Do): To make the ignored words feature useful, the
+     application must store a document’s ignored words list with the
+     document. See the NSSpellChecker class description for more
+     information. [From Apple's Cocoa documentation]*/
+}
+
+
+/* Find Next button */
+- (void)checkSpelling:(id)sender {
+ NSEvent *e =[[self window] currentEvent];
+
+  NSTRACE (checkSpelling);
+  if (!emacs_event)
+    return;
+
+  SET_FRAME_GARBAGED (emacsframe);
+
+  emacs_event->kind = NS_NONKEY_EVENT;
+  emacs_event->modifiers = 0;
+  emacs_event->code = KEY_NS_CHECK_SPELLING;
+  EV_TRAILER (e);
+}
+
 
 - (BOOL)acceptsFirstResponder
 {
@@ -9235,6 +9282,10 @@ syms_of_nsterm (void)
   DEFVAR_LISP ("ns-working-text", ns_working_text,
               "String for visualizing working composition sequence.");
   ns_working_text =Qnil;
+
+  DEFVAR_LISP ("ns-spelling-text", ns_spelling_text,
+              "The substitute text corresponding to the ns-spelling-change event.");
+  ns_spelling_text =Qnil;
 
   DEFVAR_LISP ("ns-input-font", ns_input_font,
               "The font specified in the last NS event.");
