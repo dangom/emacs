@@ -729,7 +729,7 @@ ispell-dictionary-base-alist.  If no corresponding entry is found, assumes
     ;; if (ns-spellchecker-current-language) returns a language not
     ;; included by (ns-spellchecker-list-languages) --
     ;; e.g. "Multilingual" in OS 10.6 -- append it to the list.
-    (add-to-list 'lang-list (ns-spellchecker-current-language))
+    (cl-pushnew (ns-spellchecker-current-language) lang-list :test #'equal)
     (dolist (lang lang-list)
       (setq dictionary-list
 	    (cons (ns-spellchecker-dictionary-details lang)
@@ -795,10 +795,11 @@ and return a list of lists (one for each misspelled word) of the format:
 	       ;;  add details of misspelling to head of return-list
 	       (setq word (substring string offset (+ offset length))
 		     string (substring string (+ offset length)))
-	       (add-to-list 'return-list
-			    (list word (+ prev-offset offset)
+	       (cl-pushnew (list word (+ prev-offset offset)
 				  (ns-spellchecker-get-suggestions word)
-				  nil))
+				  nil)
+                            return-list
+                            :test #'equal)
 	       (setq prev-offset (+ prev-offset offset length))
 	       )))
     return-list))
@@ -1014,7 +1015,7 @@ when cocoAspell dictionaries are installed, but no Spelling prefpane.")
 		       ;; tag after current string
 		       (re-search-forward "\\(.+\\)</string>\\s +<\\([/a-z]+\\)>")
 		       ;; tack current language onto lang-list
-		       (add-to-list 'lang-list (match-string 1))
+		       (cl-pushnew (match-string 1) lang-list :test #'equal)
 		       ;; continue if next tag indicates another language string
 		       (equal (match-string 2) "string")))
 	      ;; return the language list
@@ -1770,16 +1771,17 @@ aspell is used along with Emacs).")
 	     (or ispell-encoding8-command ispell-really-enchant))
 	;; auto-detection will only be used if spellchecker is not
 	;; ispell and supports a way to set communication to UTF-8.
-        (ispell-update-cocoaspell-settings)
-	(if ispell-really-aspell
-	    (or ispell-aspell-dictionary-alist
-		(ispell-find-aspell-dictionaries))
-	  (if ispell-really-hunspell
-	      (or ispell-hunspell-dictionary-alist
-		  (ispell-find-hunspell-dictionaries))
-            (if ispell-really-enchant
-                (or ispell-enchant-dictionary-alist
-                    (ispell-find-enchant-dictionaries))))))
+        (progn
+          (ispell-update-cocoaspell-settings)
+         (if ispell-really-aspell
+             (or ispell-aspell-dictionary-alist
+                 (ispell-find-aspell-dictionaries))
+           (if ispell-really-hunspell
+               (or ispell-hunspell-dictionary-alist
+                   (ispell-find-hunspell-dictionaries))
+             (if ispell-really-enchant
+                 (or ispell-enchant-dictionary-alist
+                     (ispell-find-enchant-dictionaries)))))))
 
     ;; Substitute ispell-dictionary-alist with the list of
     ;; dictionaries corresponding to the given spellchecker.
