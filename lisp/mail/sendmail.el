@@ -1,6 +1,6 @@
 ;;; sendmail.el --- mail sending commands for Emacs
 
-;; Copyright (C) 1985-1986, 1992-1996, 1998, 2000-2016 Free Software
+;; Copyright (C) 1985-1986, 1992-1996, 1998, 2000-2018 Free Software
 ;; Foundation, Inc.
 
 ;; Maintainer: emacs-devel@gnu.org
@@ -19,7 +19,7 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.
+;; along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 
@@ -28,8 +28,8 @@
 
 ;;; Code:
 (require 'mail-utils)
-
 (require 'rfc2047)
+(autoload 'message-make-date "message")
 
 (defgroup sendmail nil
   "Mail sending commands for Emacs."
@@ -555,8 +555,9 @@ This also saves the value of `send-mail-function' via Customize."
 	    (goto-char (point-min))
 	    (display-buffer (current-buffer))
 	    (let ((completion-ignore-case t))
-	      (completing-read "Send mail via: "
-			       options nil 'require-match)))))
+              (completing-read
+               (format "Send mail via (default %s): " (caar options))
+               options nil 'require-match nil nil (car options))))))
     (customize-save-variable 'send-mail-function
 			     (cdr (assoc-string choice options t)))))
 
@@ -1110,10 +1111,11 @@ to combine them into one, and does so if the user says y."
               (save-restriction
                 ;; This is just so the screen doesn't change.
                 (narrow-to-region (point-min) old-max)
-                (goto-char old-point)
-                (setq query-asked t)
-                (if (y-or-n-p (format "Message contains multiple %s fields.  Combine? " field))
-                    (setq query-answer t))))
+                (save-excursion
+                  (goto-char old-point)
+                  (setq query-asked t)
+                  (if (y-or-n-p (format "Message contains multiple %s fields.  Combine? " field))
+                      (setq query-answer t)))))
             (when query-answer
               (let ((this-to-start (line-beginning-position))
                     this-to-end
@@ -1408,6 +1410,7 @@ just append to the file, in Babyl format if necessary."
 	(require 'mail-utils)
 	(insert (mail-rfc822-time-zone time) " ")
 	(goto-char (point-max))
+	(insert "Date: " (message-make-date) "\n")
 	(insert-buffer-substring mailbuf)
 	;; Make sure messages are separated.
 	(goto-char (point-max))
@@ -1674,7 +1677,7 @@ and don't delete any header fields."
 	      ;; Call yank function, and set the mark if it doesn't.
 	      (apply (car original) (cdr original))
 	      (if (eq omark (mark t))
-		  (push-mark (point))))
+		  (push-mark)))
 	  ;; If the original message is in another window in the same
 	  ;; frame, delete that window to save space.
 	  (delete-windows-on original t)

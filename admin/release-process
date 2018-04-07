@@ -46,12 +46,12 @@ See admin/gitmerge.el.
 Emacs uses the "blocking" feature of Debbugs for bugs that need to be
 addressed in the next release.
 
-Currently, bug#19759 is the tracking bug for release of 25.1 and
-bug#21966 is the tracking bug for the next release.  Say bug#123 needs
-to be fixed for Emacs 25.1.  Send a message to control@debbugs.gnu.org
+Currently, bug#21966 is the tracking bug for release of 25.2 and
+bug#24655 is the tracking bug for release 26.1.  Say bug#123 needs
+to be fixed for Emacs 26.1.  Send a message to control@debbugs.gnu.org
 that says:
 
-   block 19759 by 123
+   block 24655 by 123
 
 Change "block" to "unblock" to remove a bug from the list.  Closed
 bugs are not listed as blockers, so you do not need to explicitly
@@ -115,12 +115,12 @@ Redirect /software/emacs/manual/html_mono/automake.html /software/automake/manua
 Redirect /software/emacs/manual/html_node/automake/ /software/automake/manual/html_node/
 
 Another tool you can use to check links is gnu.org's linc.py:
-http://www.gnu.org/server/source/
+https://www.gnu.org/server/source/
 
 You run this with something like:
 
 cd /path/to/cvs/emacs-www
-linc.py -o /path/to/output-dir --url http://www.gnu.org/software/emacs/ .
+linc.py -o /path/to/output-dir --url https://www.gnu.org/software/emacs/ .
 
 Be warned that it is really, really slow (as in, can take ~ a full day
 to check the manual/ directory).  It is probably best to run it on a

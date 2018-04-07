@@ -1,6 +1,6 @@
 /* Functions for handling font and other changes dynamically.
 
-Copyright (C) 2009-2016 Free Software Foundation, Inc.
+Copyright (C) 2009-2018 Free Software Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -15,7 +15,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.  */
+along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 
 #include <config.h>
 
@@ -53,7 +53,7 @@ static char *current_font;
 static struct x_display_info *first_dpyinfo;
 static Lisp_Object current_tool_bar_style;
 
-/* Store an config changed event in to the event queue.  */
+/* Store a config changed event in to the event queue.  */
 
 static void
 store_config_changed_event (Lisp_Object arg, Lisp_Object display_name)
@@ -667,8 +667,23 @@ apply_xft_settings (struct x_display_info *dpyinfo,
     }
 #endif
 
-  if ((settings->seen & SEEN_DPI) != 0 && oldsettings.dpi != settings->dpi
-      && settings->dpi > 0)
+  if ((settings->seen & SEEN_DPI) != 0
+      && settings->dpi > 0
+      /* The following conjunct avoids setting `changed' to true when
+	 old and new dpi settings do not differ "substantially".
+	 Otherwise, the dynamic-setting Elisp code may process all sorts
+	 of unrelated settings that override users' font customizations,
+	 among others.  Compare:
+
+	 https://lists.gnu.org/r/emacs-devel/2016-05/msg00557.html
+	 https://lists.gnu.org/r/bug-gnu-emacs/2016-12/msg00820.html
+
+	 As soon as the dynamic-settings code has been tested and
+	 verified, this Emacs 25.2 workaround should be removed.  */
+      && ((oldsettings.dpi >= settings->dpi
+	   && (oldsettings.dpi - settings->dpi) > 2)
+	  || ((settings->dpi > oldsettings.dpi)
+	      && (settings->dpi - oldsettings.dpi) > 2)))
     {
       FcPatternDel (pat, FC_DPI);
       FcPatternAddDouble (pat, FC_DPI, settings->dpi);

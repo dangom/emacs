@@ -1,6 +1,6 @@
 ;;; viper-util.el --- Utilities used by viper.el
 
-;; Copyright (C) 1994-1997, 1999-2016 Free Software Foundation, Inc.
+;; Copyright (C) 1994-1997, 1999-2018 Free Software Foundation, Inc.
 
 ;; Author: Michael Kifer <kifer@cs.stonybrook.edu>
 ;; Package: viper
@@ -18,7 +18,7 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.
+;; along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 
@@ -29,7 +29,6 @@
 
 ;; Compiler pacifier
 (defvar viper-overriding-map)
-(defvar pm-color-alist)
 (defvar viper-minibuffer-current-face)
 (defvar viper-minibuffer-insert-face)
 (defvar viper-minibuffer-vi-face)
@@ -131,12 +130,6 @@ Otherwise return the normal value."
        (let ((fp (assoc ',variable (frame-parameters))))
 	 (if fp (cdr fp)
 	   ,variable)))))
-
-;; OS/2
-(cond ((eq (viper-device-type) 'pm)
-       (fset 'viper-color-defined-p
-	     (lambda (color) (assoc color pm-color-alist)))))
-
 
 ;; cursor colors
 (defun viper-change-cursor-color (new-color &optional frame)
@@ -1332,7 +1325,7 @@ Works best when set in the hooks to various major modes.
 `reformed-vi' means Viper words are like Emacs words \(as determined using
 Emacs syntax tables, which are different for different major modes) with two
 exceptions: the symbol `_' is always part of a word and typical Vi non-word
-symbols, such as `,',:,\",),{, etc., are excluded.
+symbols like `\\=`', `\\='', `:', `\"', `)', and `{' are excluded.
 This behaves very close to `strict-vi', but also works well with non-ASCII
 characters from various alphabets.
 

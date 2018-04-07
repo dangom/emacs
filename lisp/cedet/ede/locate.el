@@ -1,6 +1,6 @@
 ;;; ede/locate.el --- Locate support
 
-;; Copyright (C) 2008-2016 Free Software Foundation, Inc.
+;; Copyright (C) 2008-2018 Free Software Foundation, Inc.
 
 ;; Author: Eric M. Ludlam <eric@siege-engine.com>
 
@@ -17,7 +17,7 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.
+;; along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 ;;
@@ -124,12 +124,12 @@ based on `ede-locate-setup-options'."
   t)
 
 (cl-defmethod ede-locate-flush-hash ((loc ede-locate-base))
-  "For LOC, flush hashtable and start from scratch."
+  "For LOC, flush hash table and start from scratch."
   (oset loc hash (make-hash-table :test 'equal)))
 
 (cl-defmethod ede-locate-file-in-hash ((loc ede-locate-base)
 				    filestring)
-  "For LOC, is the file FILESTRING in our hashtable?"
+  "For LOC, is the file FILESTRING in our hash table?"
   (gethash filestring (oref loc hash)))
 
 (cl-defmethod ede-locate-add-file-to-hash ((loc ede-locate-base)
@@ -246,7 +246,7 @@ variable `cedet-global-command'.")
 
 (cl-defmethod ede-locate-file-in-project-impl ((loc ede-locate-global)
                                                filesubstring)
-  "Locate occurrences of FILESUBSTRING in LOC, using Gnu Global."
+  "Locate occurrences of FILESUBSTRING in LOC, using GNU Global."
   (require 'cedet-global)
   (let ((default-directory (oref loc root)))
     (cedet-gnu-global-expand-filename filesubstring)))

@@ -1,6 +1,6 @@
 ;;; chistory.el --- list command history
 
-;; Copyright (C) 1985, 2001-2016 Free Software Foundation, Inc.
+;; Copyright (C) 1985, 2001-2018 Free Software Foundation, Inc.
 
 ;; Author: K. Shane Hartman
 ;; Maintainer: emacs-devel@gnu.org
@@ -19,7 +19,7 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.
+;; along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 
@@ -95,7 +95,7 @@ from the command history."
 
 ;;;###autoload
 (defun list-command-history ()
-  "List history of commands typed to minibuffer.
+  "List history of commands that used the minibuffer.
 The number of commands listed is controlled by `list-command-history-max'.
 Calls value of `list-command-history-filter' (if non-nil) on each history
 element to judge if that element should be excluded from the list.

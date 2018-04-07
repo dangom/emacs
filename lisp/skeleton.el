@@ -1,6 +1,6 @@
 ;;; skeleton.el --- Lisp language extension for writing statement skeletons
 
-;; Copyright (C) 1993-1996, 2001-2016 Free Software Foundation, Inc.
+;; Copyright (C) 1993-1996, 2001-2018 Free Software Foundation, Inc.
 
 ;; Author: Daniel Pfeiffer <occitan@esperanto.org>
 ;; Maintainer: emacs-devel@gnu.org
@@ -19,7 +19,7 @@
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with GNU Emacs.  If not, see <http://www.gnu.org/licenses/>.
+;; along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
 
@@ -59,8 +59,7 @@ region.")
 (make-obsolete-variable 'skeleton-autowrap nil "24.5")
 
 (defvar skeleton-end-newline t
-  "If non-nil, make sure that the skeleton inserted ends with a newline.
-This just influences the way the default `skeleton-end-hook' behaves.")
+  "If non-nil, make sure that the skeleton inserted ends with a newline.")
 
 (defvar skeleton-end-hook nil
   "Hook called at end of skeleton but before going to point of interest.
@@ -187,6 +186,10 @@ The optional third argument STR, if specified, is the value for the
 variable `str' within the skeleton.  When this is non-nil, the
 interactor gets ignored, and this should be a valid skeleton element.
 
+When done with skeleton, but before going back to `_'-point, add
+a newline (unless `skeleton-end-newline' is nil) and run the hook
+`skeleton-end-hook'.
+
 SKELETON is made up as (INTERACTOR ELEMENT ...).  INTERACTOR may be nil if
 not needed, a prompt-string or an expression for complex read functions.
 
@@ -235,10 +238,7 @@ available:
 		then: insert previously read string once more
 	help	help-form during interaction with the user or nil
 	input	initial input (string or cons with index) while reading str
-	v1, v2	local variables for memorizing anything you want
-
-When done with skeleton, but before going back to `_'-point call
-`skeleton-end-hook' if that is non-nil."
+	v1, v2	local variables for memorizing anything you want"
   (let ((skeleton-regions regions))
     (and skeleton-regions
 	 (setq skeleton-regions
@@ -487,8 +487,8 @@ Each alist element, which looks like (ELEMENT ...), is passed to
 
 Elements might be (?\\=` ?\\=` _ \"\\='\\='\"), (?\\( ?  _ \" )\") or (?{ \\n > _ \\n ?} >).")
 
-(defvar skeleton-pair-default-alist '((?( _ ?)) (?\))
-				      (?[ _ ?]) (?\])
+(defvar skeleton-pair-default-alist '((?\( _ ?\)) (?\))
+				      (?\[ _ ?\]) (?\])
 				      (?{ _ ?}) (?\})
 				      (?< _ ?>) (?\>)
 				      (?« _ ?») (?\»)
