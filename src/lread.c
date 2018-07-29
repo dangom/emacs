@@ -896,6 +896,7 @@ lisp_file_lexically_bound_p (Lisp_Object readcharfun)
 	    ch = READCHAR;
 
 	  i = 0;
+	  beg_end_state = NOMINAL;
 	  while (ch != ':' && ch != '\n' && ch != EOF && in_file_vars)
 	    {
 	      if (i < sizeof var - 1)
@@ -921,6 +922,7 @@ lisp_file_lexically_bound_p (Lisp_Object readcharfun)
 		ch = READCHAR;
 
 	      i = 0;
+	      beg_end_state = NOMINAL;
 	      while (ch != ';' && ch != '\n' && ch != EOF && in_file_vars)
 		{
 		  if (i < sizeof val - 1)
@@ -2675,7 +2677,7 @@ read1 (Lisp_Object readcharfun, int *pch, bool first_in_list)
   int c;
   bool uninterned_symbol = false;
   bool multibyte;
-  char stackbuf[MAX_ALLOCA];
+  char stackbuf[128];  /* Small, as read1 is recursive (Bug#31995).  */
   current_thread->stack_top = stackbuf;
 
   *pch = 0;

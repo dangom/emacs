@@ -1958,12 +1958,34 @@ x_set_parent_frame (struct frame *f, Lisp_Object new_value, Lisp_Object old_valu
 
   if (p != FRAME_PARENT_FRAME (f))
     {
-      parent = [FRAME_NS_VIEW (p) window];
+      block_input ();
       child = [FRAME_NS_VIEW (f) window];
 
-      block_input ();
-      [parent addChildWindow: child
-                     ordered: NSWindowAbove];
+      if ([child parentWindow] != nil)
+        {
+          [[child parentWindow] removeChildWindow:child];
+#if defined (NS_IMPL_COCOA) && MAC_OS_X_VERSION_MAX_ALLOWED >= 101000
+#if MAC_OS_X_VERSION_MIN_REQUIRED < 101000
+          if ([child respondsToSelector:@selector(setAccessibilitySubrole:)]
+#endif
+              [child setAccessibilitySubrole:NSAccessibilityStandardWindowSubrole];
+#endif
+        }
+
+      if (!NILP (new_value))
+        {
+          parent = [FRAME_NS_VIEW (p) window];
+
+          [parent addChildWindow: child
+                         ordered: NSWindowAbove];
+#if defined (NS_IMPL_COCOA) && MAC_OS_X_VERSION_MAX_ALLOWED >= 101000
+#if MAC_OS_X_VERSION_MIN_REQUIRED < 101000
+          if ([child respondsToSelector:@selector(setAccessibilitySubrole:)]
+#endif
+              [child setAccessibilitySubrole:NSAccessibilityFloatingWindowSubrole];
+#endif
+        }
+
       unblock_input ();
 
       fset_parent_frame (f, new_value);
@@ -2525,7 +2547,7 @@ ns_mouse_position (struct frame **fp, int insist, Lisp_Object *bar_window,
 
   if (f && FRAME_NS_P (f))
     {
-      view = FRAME_NS_VIEW (*fp);
+      view = FRAME_NS_VIEW (f);
 
       position = [[view window] mouseLocationOutsideOfEventStream];
       position = [view convertPoint: position fromView: nil];
@@ -6343,14 +6365,20 @@ not_in_argv (NSString *arg)
          by doCommandBySelector: deleteBackward: */
 - (void)insertText: (id)aString
 {
-  int code;
-  int len = [(NSString *)aString length];
-  int i;
+  NSString *s;
+  NSUInteger len;
 
   NSTRACE ("[EmacsView insertText:]");
 
+  if ([aString isKindOfClass:[NSAttributedString class]])
+    s = [aString string];
+  else
+    s = aString;
+
+  len = [s length];
+
   if (NS_KEYLOG)
-    NSLog (@"insertText '%@'\tlen = %d", aString, len);
+    NSLog (@"insertText '%@'\tlen = %lu", aString, (unsigned long) len);
   processingCompose = NO;
 
   if (!emacs_event)
@@ -6360,10 +6388,24 @@ not_in_argv (NSString *arg)
   if (workingText != nil)
     [self deleteWorkingText];
 
+  /* It might be preferable to use getCharacters:range: below,
+     cf. https://developer.apple.com/library/content/documentation/Cocoa/Conceptual/CocoaPerformance/Articles/StringDrawing.html#//apple_ref/doc/uid/TP40001445-112378.
+     However, we probably can't use SAFE_NALLOCA here because it might
+     exit nonlocally.  */
+
   /* now insert the string as keystrokes */
-  for (i =0; i<len; i++)
+  for (NSUInteger i = 0; i < len; i++)
     {
-      code = [aString characterAtIndex: i];
+      NSUInteger code = [s characterAtIndex:i];
+      if (UTF_16_HIGH_SURROGATE_P (code) && i < len - 1)
+        {
+          unichar low = [s characterAtIndex:i + 1];
+          if (UTF_16_LOW_SURROGATE_P (low))
+            {
+              code = surrogates_to_codepoint (low, code);
+              ++i;
+            }
+        }
       /* TODO: still need this? */
       if (code == 0x2DC)
         code = '~'; /* 0x7E */

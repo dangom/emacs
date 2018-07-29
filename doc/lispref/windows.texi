@@ -904,7 +904,7 @@ include mode and header line and a bottom divider, if any.
 
 If @var{window} is part of a horizontal combination and the value of the
 option @code{fit-window-to-buffer-horizontally} (see below) is
-non-@code{nil}, this function adjusts @var{window}'s height.  The new
+non-@code{nil}, this function adjusts @var{window}'s width.  The new
 width of @var{window} is calculated from the maximum length of its
 buffer's lines that follow the current start position of @var{window}.
 The optional argument @var{max-width} specifies a maximum width and
@@ -3730,6 +3730,7 @@ argument @var{window}, then returns its result.
 @end defun
 
 @cindex window end position
+@cindex last visible position in a window
 @defun window-end &optional window update
 This function returns the position where display of its buffer ends in
 @var{window}.  The default for @var{window} is the selected window.
@@ -3752,7 +3753,8 @@ Even if @var{update} is non-@code{nil}, @code{window-end} does not
 attempt to scroll the display if point has moved off the screen, the
 way real redisplay would do.  It does not alter the
 @code{window-start} value.  In effect, it reports where the displayed
-text will end if scrolling is not required.
+text will end if scrolling is not required.  Note that the position it
+returns might be only partially visible.
 @end defun
 
 @vindex window-group-end-function

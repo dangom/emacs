@@ -117,6 +117,8 @@
 
 (defalias 'check-ispell-version 'ispell-check-version)
 
+(declare-function flyspell-unhighlight-at "flyspell" (pos))
+
 ;;; **********************************************************************
 ;;; The following variables should be set according to personal preference
 ;;; and location of binaries:
@@ -1711,14 +1713,17 @@ Internal use.")
   (with-output-to-string
     (with-current-buffer
         standard-output
-        (apply 'ispell-call-process
-               (concat ispell-program-name "-lsmod") nil t nil args))))
+      (apply 'ispell-call-process
+             (replace-regexp-in-string "enchant\\(-[0-9]\\)?$" "enchant-lsmod\\1"
+                                       ispell-program-name) nil t nil args))))
 
 (defun ispell--get-extra-word-characters (&optional lang)
   "Get the extra word characters for LANG as a character class.
 If LANG is omitted, get the extra word characters for the default language."
-  (concat "[" (string-trim-right (apply 'ispell--call-enchant-lsmod
-                                        (append '("-word-chars") (if lang `(,lang))))) "]"))
+  (let ((extra (string-trim-right
+                (apply 'ispell--call-enchant-lsmod
+                       (append '("-word-chars") (if lang `(,lang)))))))
+    (if (string= extra "") "" (concat "[" extra "]"))))
 
 (defun ispell-find-enchant-dictionaries ()
   "Find Enchant's dictionaries, and record in `ispell-enchant-dictionary-alist'."
@@ -1747,6 +1752,10 @@ If LANG is omitted, get the extra word characters for the default language."
 
 (defvar ispell-last-program-name nil
   "Last value of `ispell-program-name'.  Internal use.")
+
+;; Allow dynamically binding ispell-base-dicts-override-alist as
+;; advertised in the doc string of ispell-initialize-spellchecker-hook.
+(defvar ispell-base-dicts-override-alist)
 
 (defvar ispell-initialize-spellchecker-hook nil
   "Normal hook run on spellchecker initialization.
@@ -2741,10 +2750,7 @@ If so, ask if it needs to be saved."
 	     (or no-query
 		 (y-or-n-p "Personal dictionary modified.  Save? ")))
     (ispell-send-string "#\n")	; save dictionary
-    (message "Personal dictionary saved.")
-    (when flyspell-mode
-      (flyspell-mode 0)
-      (flyspell-mode 1)))
+    (message "Personal dictionary saved."))
   ;; unassert variable, even if not saved to avoid questioning.
   (setq ispell-pdict-modified-p nil))
 
@@ -2874,7 +2880,7 @@ Global `ispell-quit' set to start location to continue spell session."
 			(ns-spellchecker-learn-word word)
 		    (ispell-send-string (concat "*" word "\n"))
 		      (setq ispell-pdict-modified-p '(t))) ; dictionary modified!
-		    (and (fboundp 'flyspell-unhighlight-at)
+		    (when flyspell-mode
 			 (flyspell-unhighlight-at start))
 		    nil)
 		   ((or (= char ?a) (= char ?A)) ; accept word without insert
@@ -2883,8 +2889,8 @@ Global `ispell-quit' set to start location to continue spell session."
 		    (ispell-send-string (concat "@" word "\n"))
 		    (cl-pushnew word ispell-buffer-session-localwords
                                 :test #'equal)
-		    (when (fboundp 'flyspell-unhighlight-at)
-                          (flyspell-unhighlight-at start))
+		    (when flyspell-mode
+                      (flyspell-unhighlight-at start))
 		    (or ispell-buffer-local-name ; session localwords might conflict
 			(setq ispell-buffer-local-name (buffer-name)))
 		    (if (null ispell-pdict-modified-p)
@@ -2925,8 +2931,9 @@ Global `ispell-quit' set to start location to continue spell session."
 		    (ispell-pdict-save ispell-silently-savep)
 		    (message "%s"
 		     (substitute-command-keys
-		      (concat "Spell-checking suspended;"
-			      " use C-u \\[ispell-word] to resume")))
+		      (concat
+                       "Spell-checking suspended; use "
+		       "\\[universal-argument] \\[ispell-word] to resume")))
 		    (setq ispell-quit start)
 		    nil)
 		   ((= char ?q)

@@ -639,8 +639,9 @@ buffer if the variable `delete-trailing-lines' is non-nil."
           (while (re-search-forward "\\s-$" end-marker t)
             (skip-syntax-backward "-" (line-beginning-position))
             (let ((b (point)) (e (match-end 0)))
-              (when (region-modifiable-p b e)
-                (delete-region b e)))))
+              (if (region-modifiable-p b e)
+                  (delete-region b e)
+                (goto-char e)))))
         (if end
             (set-marker end-marker nil)
           ;; Delete trailing empty lines.
@@ -1009,14 +1010,14 @@ instead of deleted."
        (t
         (filter-buffer-substring (region-beginning) (region-end) method)))))
   "Function to get the region's content.
-Called with one argument METHOD.
-If METHOD is `delete-only', then delete the region; the return value
-is undefined.  If METHOD is nil, then return the content as a string.
-If METHOD is `bounds', then return the boundaries of the region
-as a list of cons cells of the form (START . END).
-If METHOD is anything else, delete the region and return its content
-as a string, after filtering it with `filter-buffer-substring', which
-is called with METHOD as its 3rd argument.")
+Called with one argument METHOD which can be:
+- nil: return the content as a string.
+- `delete-only': delete the region; the return value is undefined.
+- `bounds': return the boundaries of the region as a list of cons
+  cells of the form (START . END).
+- anything else: delete the region and return its content
+  as a string, after filtering it with `filter-buffer-substring', which
+  is called with METHOD as its 3rd argument.")
 
 (defvar region-insert-function
   (lambda (lines)
@@ -1352,7 +1353,7 @@ in *Help* buffer.  See also the command `describe-char'."
 	(if (or (not coding)
 		(eq (coding-system-type coding) t))
 	    (setq coding (default-value 'buffer-file-coding-system)))
-	(if (eq (char-charset char) 'eight-bit)
+	(if (and (>= char #x3fff80) (<= char #x3fffff))
 	    (setq encoding-msg
 		  (format "(%d, #o%o, #x%x, raw-byte)" char char char))
 	  ;; Check if the character is displayed with some `display'
@@ -1470,9 +1471,9 @@ This affects printing by `eval-expression' (via
   :version "26.1")
 
 (defun eval-expression-print-format (value)
-  "If VALUE in an integer, return a specially formatted string.
+  "If VALUE is an integer, return a specially formatted string.
 This string will typically look like \" (#o1, #x1, ?\\C-a)\".
-If VALUE is not an integer, nil is returned.
+If VALUE is not an integer, return nil.
 This function is used by commands like `eval-expression' that
 display the result of expression evaluation."
   (when (integerp value)
@@ -1533,11 +1534,11 @@ non-nil (interactively, with a prefix argument of zero), however,
 there is no such truncation.
 
 If the resulting value is an integer, and CHAR-PRINT-LIMIT is
-non-nil (interactively, unless given a positive prefix argument)
+non-nil (interactively, unless given a non-zero prefix argument)
 it will be printed in several additional formats (octal,
 hexadecimal, and character).  The character format is only used
 if the value is below CHAR-PRINT-LIMIT (interactively, if the
-prefix argument is -1 or the value is below
+prefix argument is -1 or the value doesn't exceed
 `eval-expression-print-maximum-character').
 
 Runs the hook `eval-expression-minibuffer-setup-hook' on entering the
@@ -4319,12 +4320,11 @@ ring directly.")
   "The tail of the kill ring whose car is the last thing yanked.")
 
 (defcustom save-interprogram-paste-before-kill nil
-  "Save clipboard strings into kill ring before replacing them.
-When one selects something in another program to paste it into Emacs,
-but kills something in Emacs before actually pasting it,
-this selection is gone unless this variable is non-nil,
-in which case the other program's selection is saved in the `kill-ring'
-before the Emacs kill and one can still paste it using \\[yank] \\[yank-pop]."
+  "Save existing clipboard text into kill ring before replacing it.
+A non-nil value ensures that Emacs kill operations do not
+irrevocably overwrite existing clipboard text by saving it to the
+`kill-ring' prior to the kill.  Such text can subsequently be
+retrieved via \\[yank] \\[yank-pop]]."
   :type 'boolean
   :group 'killing
   :version "23.2")
@@ -4344,7 +4344,7 @@ Optional second argument REPLACE non-nil means that STRING will replace
 the front of the kill ring, rather than being added to the list.
 
 When `save-interprogram-paste-before-kill' and `interprogram-paste-function'
-are non-nil, saves the interprogram paste string(s) into `kill-ring' before
+are non-nil, save the interprogram paste string(s) into `kill-ring' before
 STRING.
 
 When the yank handler has a non-nil PARAM element, the original STRING
@@ -4379,20 +4379,24 @@ argument should still be a \"useful\" string for such uses."
   (if interprogram-cut-function
       (funcall interprogram-cut-function string)))
 
-;; It has been argued that this should work similar to `self-insert-command'
-;; which merges insertions in undo-list in groups of 20 (hard-coded in cmds.c).
+;; It has been argued that this should work like `self-insert-command'
+;; which merges insertions in `buffer-undo-list' in groups of 20
+;; (hard-coded in `undo-auto-amalgamate').
 (defcustom kill-append-merge-undo nil
-  "Whether appending to kill ring also makes \\[undo] restore both pieces of text simultaneously."
+  "Amalgamate appending kills with the last kill for undo.
+When non-nil, appending or prepending text to the last kill makes
+\\[undo] restore both pieces of text simultaneously."
   :type 'boolean
   :group 'killing
   :version "25.1")
 
 (defun kill-append (string before-p)
   "Append STRING to the end of the latest kill in the kill ring.
-If BEFORE-P is non-nil, prepend STRING to the kill.
-Also removes the last undo boundary in the current buffer,
- depending on `kill-append-merge-undo'.
-If `interprogram-cut-function' is set, pass the resulting kill to it."
+If BEFORE-P is non-nil, prepend STRING to the kill instead.
+If `interprogram-cut-function' is non-nil, call it with the
+resulting kill.
+If `kill-append-merge-undo' is non-nil, remove the last undo
+boundary in the current buffer."
   (let* ((cur (car kill-ring)))
     (kill-new (if before-p (concat string cur) (concat cur string))
 	      (or (= (length cur) 0)
@@ -5968,10 +5972,6 @@ columns by which window is scrolled from left margin.
 When the `track-eol' feature is doing its job, the value is
 `most-positive-fixnum'.")
 
-(defvar last--line-number-width 0
-  "Last value of width used for displaying line numbers.
-Used internally by `line-move-visual'.")
-
 (defcustom line-move-ignore-invisible t
   "Non-nil means commands that move by lines ignore invisible newlines.
 When this option is non-nil, \\[next-line], \\[previous-line], \\[move-end-of-line], and \\[move-beginning-of-line] behave
@@ -6250,19 +6250,9 @@ If NOERROR, don't signal an error if we can't move that many lines."
 	     (memq last-command `(next-line previous-line ,this-command)))
 	;; If so, there's no need to reset `temporary-goal-column',
 	;; but we may need to hscroll.
-        (progn
-          (if (or (/= (cdr temporary-goal-column) hscroll)
-                  (>  (cdr temporary-goal-column) 0))
-              (setq target-hscroll (cdr temporary-goal-column)))
-          ;; Update the COLUMN part of temporary-goal-column if the
-          ;; line-number display changed its width since the last
-          ;; time.
-          (setq temporary-goal-column
-                (cons (+ (car temporary-goal-column)
-                         (/ (float (- lnum-width last--line-number-width))
-                            (frame-char-width)))
-                      (cdr temporary-goal-column)))
-          (setq last--line-number-width lnum-width))
+        (if (or (/= (cdr temporary-goal-column) hscroll)
+                (>  (cdr temporary-goal-column) 0))
+            (setq target-hscroll (cdr temporary-goal-column)))
       ;; Otherwise, we should reset `temporary-goal-column'.
       (let ((posn (posn-at-point))
 	    x-pos)
@@ -6272,7 +6262,7 @@ If NOERROR, don't signal an error if we can't move that many lines."
 	 ((memq (nth 1 posn) '(right-fringe left-fringe))
 	  (setq temporary-goal-column (cons (window-width) hscroll)))
 	 ((car (posn-x-y posn))
-	  (setq x-pos (car (posn-x-y posn)))
+	  (setq x-pos (- (car (posn-x-y posn)) lnum-width))
 	  ;; In R2L lines, the X pixel coordinate is measured from the
 	  ;; left edge of the window, but columns are still counted
 	  ;; from the logical-order beginning of the line, i.e. from
