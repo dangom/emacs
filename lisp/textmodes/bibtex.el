@@ -1,6 +1,6 @@
 ;;; bibtex.el --- BibTeX mode for GNU Emacs -*- lexical-binding: t -*-
 
-;; Copyright (C) 1992, 1994-1999, 2001-2018 Free Software Foundation,
+;; Copyright (C) 1992, 1994-1999, 2001-2019 Free Software Foundation,
 ;; Inc.
 
 ;; Author: Stefan Schoef <schoef@offis.uni-oldenburg.de>
@@ -457,7 +457,7 @@ INIT is either the initial content of the field or a function,
 which is called to determine the initial content of the field.
 ALTERNATIVE if non-nil is an integer that numbers sets of
 alternatives, starting from zero."
-  :group 'BibTeX
+  :group 'bibtex
   :version "26.1"                       ; add Conference
   :type 'bibtex-entry-alist)
 (put 'bibtex-BibTeX-entry-alist 'risky-local-variable t)
@@ -4105,10 +4105,10 @@ A prefix arg negates the value of `bibtex-search-entry-globally'."
                     (setq buffer (pop buffer-list)))
           (with-current-buffer buffer
             (if (cdr (assoc-string key bibtex-reference-keys))
-                ;; `bibtex-search-entry' moves point if key found
                 (setq found (bibtex-search-entry key)))))
         (cond ((and found display)
 	       (switch-to-buffer buffer)
+               (goto-char found)
 	       (bibtex-reposition-window))
               (found (set-buffer buffer))
               (display (message "Key `%s' not found" key)))

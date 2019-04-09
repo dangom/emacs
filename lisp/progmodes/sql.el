@@ -1,6 +1,6 @@
 ;;; sql.el --- specialized comint.el for SQL interpreters  -*- lexical-binding: t -*-
 
-;; Copyright (C) 1998-2018 Free Software Foundation, Inc.
+;; Copyright (C) 1998-2019 Free Software Foundation, Inc.
 
 ;; Author: Alex Schroeder <alex@gnu.org>
 ;; Maintainer: Michael Mauger <michael@mauger.com>
@@ -4263,9 +4263,22 @@ the call to \\[sql-product-interactive] with
                 (funcall (sql-get-product-feature product :sqli-comint-func)
                          product
                          (sql-get-product-feature product :sqli-options)
-                         (if (and new-name (string-prefix-p "SQL" new-name t))
-                             new-name
-                           (concat "SQL: " new-name))))
+                         (cond
+                          ((null new-name)
+                           "*SQL*")
+                          ((stringp new-name)
+                           (if (string-prefix-p "*SQL: " new-name t)
+                               new-name
+                             (concat "*SQL: " new-name "*")))
+                          ((equal new-name '(4))
+                           (concat
+                            "*SQL: "
+                            (read-string
+                             "Buffer name (\"*SQL: XXX*\"; enter `XXX'): "
+                             sql-alternate-buffer-name)
+                            "*"))
+                          (t
+                           (format "*SQL: %s*" new-name)))))
 
               ;; Set SQLi mode.
               (let ((sql-interactive-product product))

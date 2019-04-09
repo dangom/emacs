@@ -1,6 +1,6 @@
 /* Functions for the X window system.
 
-Copyright (C) 1989, 1992-2018 Free Software Foundation, Inc.
+Copyright (C) 1989, 1992-2019 Free Software Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -5054,7 +5054,7 @@ frame_geometry (Lisp_Object frame, Lisp_Object attribute)
   int menu_bar_height = 0, menu_bar_width = 0;
   int tool_bar_height = 0, tool_bar_width = 0;
 
-  if (FRAME_INITIAL_P (f) || !FRAME_X_P (f))
+  if (FRAME_INITIAL_P (f) || !FRAME_X_P (f) || !FRAME_OUTER_WINDOW (f))
     return Qnil;
 
   block_input ();
@@ -5300,12 +5300,16 @@ x_frame_list_z_order (Display* dpy, Window window)
 	  Lisp_Object frame, tail;
 
 	  FOR_EACH_FRAME (tail, frame)
-	    /* With a reparenting window manager the parent_desc field
-	       usually specifies the topmost windows of our frames.
-	       Otherwise FRAME_OUTER_WINDOW should do.  */
-	    if (XFRAME (frame)->output_data.x->parent_desc == children[i]
-		|| FRAME_OUTER_WINDOW (XFRAME (frame)) == children[i])
-	      frames = Fcons (frame, frames);
+            {
+              struct frame *cf = XFRAME (frame);
+              /* With a reparenting window manager the parent_desc
+                 field usually specifies the topmost windows of our
+                 frames.  Otherwise FRAME_OUTER_WINDOW should do.  */
+              if (FRAME_X_P (cf)
+                  && (cf->output_data.x->parent_desc == children[i]
+                      || FRAME_OUTER_WINDOW (cf) == children[i]))
+                frames = Fcons (frame, frames);
+            }
 	}
 
       if (children) XFree ((char *)children);

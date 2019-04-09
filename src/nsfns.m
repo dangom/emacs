@@ -1,6 +1,6 @@
 /* Functions for the NeXT/Open/GNUstep and macOS window system.
 
-Copyright (C) 1989, 1992-1994, 2005-2006, 2008-2018 Free Software
+Copyright (C) 1989, 1992-1994, 2005-2006, 2008-2019 Free Software
 Foundation, Inc.
 
 This file is part of GNU Emacs.
@@ -1855,7 +1855,8 @@ Frames are listed from topmost (first) to bottommost (last).  */)
       Lisp_Object frame;
 
       /* Check against [win parentWindow] so that it doesn't match itself. */
-      if (parent == nil || ns_window_is_ancestor (parent, [win parentWindow]))
+      if ([[win delegate] isKindOfClass:[EmacsView class]]
+          && (parent == nil || ns_window_is_ancestor (parent, [win parentWindow])))
         {
           XSETFRAME (frame, ((EmacsView *)[win delegate])->emacsframe);
           frames = Fcons(frame, frames);

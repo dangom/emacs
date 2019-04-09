@@ -1,6 +1,6 @@
 /* Generic frame functions.
 
-Copyright (C) 1993-1995, 1997, 1999-2018 Free Software Foundation, Inc.
+Copyright (C) 1993-1995, 1997, 1999-2019 Free Software Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -1933,6 +1933,7 @@ delete_frame (Lisp_Object frame, Lisp_Object force)
   if (f == sf)
     {
       Lisp_Object tail;
+      Lisp_Object frame1 UNINIT;  /* This line works around GCC bug 85563.  */
       eassume (CONSP (Vframe_list));
 
       /* Look for another visible frame on the same terminal.

@@ -1,6 +1,6 @@
 ;;; frame.el --- multi-frame management independent of window systems  -*- lexical-binding:t -*-
 
-;; Copyright (C) 1993-1994, 1996-1997, 2000-2018 Free Software
+;; Copyright (C) 1993-1994, 1996-1997, 2000-2019 Free Software
 ;; Foundation, Inc.
 
 ;; Maintainer: emacs-devel@gnu.org
@@ -597,7 +597,9 @@ If DISPLAY is nil, that stands for the selected frame's display."
 (defun make-frame-command ()
   "Make a new frame, on the same terminal as the selected frame.
 If the terminal is a text-only terminal, this also selects the
-new frame."
+new frame.
+
+When called from Lisp, returns the new frame."
   (interactive)
   (if (display-graphic-p)
       (make-frame)
@@ -1689,6 +1691,14 @@ for FRAME."
 
 ;;;; Frame/display capabilities.
 
+;; These functions should make the features they test explicit in
+;; their names, so that when capabilities or the corresponding Emacs
+;; features change, it will be easy to find all the tests for such
+;; capabilities by a simple text search.  See more about the history
+;; and the intent of these functions in
+;; http://lists.gnu.org/archive/html/bug-gnu-emacs/2019-04/msg00004.html
+;; or in https://debbugs.gnu.org/cgi/bugreport.cgi?bug=35058#17.
+
 (declare-function msdos-mouse-p "dosfns.c")
 
 (defun display-mouse-p (&optional display)
@@ -2475,6 +2485,9 @@ See also `toggle-frame-maximized'."
 ;; F5 then produces the correct effect, the variable doesn't need
 ;; to be in this list; otherwise, it does.
 (mapc (lambda (var)
+        ;; Using symbol-function here tells the watcher machinery to
+        ;; call the C function set-buffer-redisplay directly, thus
+        ;; avoiding a potential GC.
         (add-variable-watcher var (symbol-function 'set-buffer-redisplay)))
       '(line-spacing
         overline-margin

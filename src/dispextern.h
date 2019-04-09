@@ -1,6 +1,6 @@
 /* Interface definitions for display code.
 
-Copyright (C) 1985, 1993-1994, 1997-2018 Free Software Foundation, Inc.
+Copyright (C) 1985, 1993-1994, 1997-2019 Free Software Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -2420,7 +2420,7 @@ struct it
   /* Face to use.  */
   int face_id;
 
-  /* Setting of buffer-local variable selective-display-ellipsis.  */
+  /* Setting of buffer-local variable selective-display-ellipses.  */
   bool_bf selective_display_ellipsis_p : 1;
 
   /* True means control characters are translated into the form `^C'
@@ -2461,6 +2461,10 @@ struct it
   /* If true, adjust current glyph so it does not increase current row
      descent/ascent (line-height property).  Reset after this glyph.  */
   bool_bf constrain_row_ascent_descent_p : 1;
+
+  /* If true, glyphs for line number display were already produced for
+     the current row.  */
+  bool_bf line_number_produced_p : 1;
 
   enum line_wrap_method line_wrap;
 
@@ -2640,6 +2644,12 @@ struct it
 
   /* The line number of point's line, or zero if not computed yet.  */
   ptrdiff_t pt_lnum;
+
+  /* Number of pixels to offset tab stops due to width fixup of the
+     first glyph that crosses first_visible_x.  This is only needed on
+     GUI frames, only when display-line-numbers is in effect, and only
+     in hscrolled windows.  */
+  int tab_offset;
 
   /* Left fringe bitmap number (enum fringe_bitmap_type).  */
   unsigned left_user_fringe_bitmap : FRINGE_ID_BITS;
