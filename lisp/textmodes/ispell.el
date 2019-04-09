@@ -727,7 +727,7 @@ ispell-dictionary-base-alist.  If no corresponding entry is found, assumes
     ;; if (ns-spellchecker-current-language) returns a language not
     ;; included by (ns-spellchecker-list-languages) --
     ;; e.g. "Multilingual" in OS 10.6 -- append it to the list.
-    (add-to-list 'lang-list (ns-spellchecker-current-language))
+    (cl-pushnew'lang-list (ns-spellchecker-current-language))
     (dolist (lang lang-list)
       (setq dictionary-list
 	    (cons (ns-spellchecker-dictionary-details lang)
@@ -793,7 +793,7 @@ and return a list of lists (one for each misspelled word) of the format:
 	       ;;  add details of misspelling to head of return-list
 	       (setq word (substring string offset (+ offset length))
 		     string (substring string (+ offset length)))
-	       (add-to-list 'return-list
+	       (cl-pushnew'return-list
 			    (list word (+ prev-offset offset)
 				  (ns-spellchecker-get-suggestions word)
 				  nil))
@@ -1012,7 +1012,7 @@ when cocoAspell dictionaries are installed, but no Spelling prefpane.")
 		       ;; tag after current string
 		       (re-search-forward "\\(.+\\)</string>\\s +<\\([/a-z]+\\)>")
 		       ;; tack current language onto lang-list
-		       (add-to-list 'lang-list (match-string 1))
+		       (cl-pushnew'lang-list (match-string 1))
 		       ;; continue if next tag indicates another language string
 		       (equal (match-string 2) "string")))
 	      ;; return the language list
